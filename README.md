@@ -34,3 +34,31 @@ When it requests a tool, the Python code executes the real function, sends the r
 - `llama3.2:3b` doesn't always respect the declared JSON types in tool schemas (e.g. sending `"5"` instead of `5` for integer parameters) — tool functions defensively cast inputs with `int()` where needed.
 - Years-of-experience extraction relies on a regex pattern (`\d+\+?\s*years?`) and may miss resumes that phrase experience differently.
 
+
+## Running with Docker
+
+The FastAPI service can be containerized. Ollama itself runs on the host machine (not inside the container) — the container connects to it via `host.docker.internal`.
+
+### Build the image
+
+```bash
+docker build -t my-agent .
+```
+
+### Run the container
+
+```bash
+docker run -d -p 8000:8000 \
+  -e OLLAMA_HOST=http://host.docker.internal:11434 \
+  -v "/path/to/chroma_db:/app/chroma_db" \
+  -v "/path/to/data:/app/data" \
+  --name recruiting-agent my-agent
+```
+
+The API will be available at `http://localhost:8000/docs`.
+
+### Notes
+- I changed the LLM model to llama3.1:8b due to some lack of light model's ability
+- Ollama must be running on the host before starting the container.
+- `chroma_db/` and `data/` are mounted as volumes rather than baked into the image, so the database can be updated without rebuilding.
+- Running the containerized agent alongside Ollama requires sufficient system RAM, since Docker Desktop (via WSL2) and Ollama both compete for memory on the same machine. On resource-constrained systems, consider using a smaller model (e.g. `llama3.2:3b`) or increasing available RAM / adjusting the WSL2 memory limit via `.wslconfig`.
